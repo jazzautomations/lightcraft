@@ -1,0 +1,33 @@
+# Fork-only: fmt + clippy + release build of the desktop app on Linux x86_64, with the binaries as an artifact.
+name: Linux check
+on:
+  workflow_dispatch:
+  push:
+    branches: ["build/**"]
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libgl1-mesa-dev
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      - run: cargo clippy -p lightcraft --all-targets -- -D warnings
+      - run: cargo test -p lightcraft
+      - run: cargo build --release -p lightcraft -p lightcraft-cli
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lightcraft-linux-x86_64
+          path: |
+            target/release/lightcraft
+            target/release/lightcraft-cli
+          if-no-files-found: error
